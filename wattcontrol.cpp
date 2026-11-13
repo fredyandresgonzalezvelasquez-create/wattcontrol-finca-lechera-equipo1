@@ -1,5 +1,5 @@
 // =============================================================
-// (Etapa 2) WattControl - Gestor de energia de una FINCA LECHERA (El Nino 2026)
+// WattControl - Gestor de energia de una FINCA LECHERA (El Nino 2026)
 // EA2: herencia, polimorfismo, composicion, agregacion y asociacion
 // Negocio: finca lechera (ultimo digito del documento: 6)
 // Autor: Fredy Andres Gonzalez Velasquez
@@ -527,22 +527,115 @@ public:
 };
 
 // =============================================================
-// main de prueba (etapa 2): negocio con la simulacion, todavia sin menu
+// main: el programa empieza a ejecutarse aqui
 // =============================================================
 int main() {
+    // srand fija el punto de partida de rand(): misma semilla = mismos precios
     srand(SEMILLA);
+
+    // El mercado existe por su cuenta: no es parte del negocio
     Mercado mercado;
+    // Las cargas se crean AFUERA del negocio (agregacion)
     CargaCritica enfriador("Enfriador", POTENCIA_ENFRIADOR);
     CargaAplazable ordenadora("Ordenadora", POTENCIA_ORDENADORA, HORAS_MIN_ORDENADORA);
     CargaAplazable bomba("Bomba", POTENCIA_BOMBA, HORAS_MIN_BOMBA);
+    // Crea el negocio y le pasa la direccion del mercado: asociacion
     Negocio negocio("Finca Lechera", &mercado);
+    // Le agrega las cargas al negocio (agregacion)
     negocio.agregarCarga(&enfriador);
     negocio.agregarCarga(&ordenadora);
     negocio.agregarCarga(&bomba);
     negocio.mostrar();
-    // Evalua una lectura de ejemplo y simula un dia
-    negocio.evaluar(HORA_EJEMPLO, PRECIO_EJEMPLO, EMBALSES_EJEMPLO);
-    negocio.simularDia();
-    negocio.resumen();
+
+    // Lectura manual: empieza con valores de ejemplo
+    int hora = HORA_EJEMPLO;
+    float precio = PRECIO_EJEMPLO, embalses = EMBALSES_EJEMPLO;
+    // true cuando ya se simulo un dia (para poder ver el resumen)
+    bool haySimulacion = false;
+    // La opcion que escoja el usuario en el menu
+    int opcion;
+
+    // do-while: el menu se muestra al menos una vez y se repite mientras la opcion no sea 0
+    do {
+        cout << endl << "===== WattControl: Finca Lechera =====" << endl;
+        cout << "1. Ingresar lectura manual (hora, precio, embalses)" << endl;
+        cout << "2. Evaluar decision de cada carga" << endl;
+        cout << "3. Simular un dia completo (24 h)" << endl;
+        cout << "4. Ver resumen de la ultima simulacion" << endl;
+        cout << "0. Salir" << endl;
+        cout << "Opcion: ";
+        // cin lee del teclado lo que escriba el usuario y lo guarda en opcion
+        cin >> opcion;
+        // Si escribio una letra, cin falla: se limpia el error y la opcion queda invalida
+        if (cin.fail()) {
+            cin.clear();
+            opcion = -1;
+        }
+
+        // switch: segun el valor de opcion, ejecuta un caso u otro
+        switch (opcion) {
+        // Opcion 1: pedir la lectura, validando cada dato con do-while
+        case 1:
+            // La hora: se vuelve a pedir mientras no este entre 0 y 23
+            do {
+                cout << "Hora (" << HORA_MINIMA << " a " << HORA_MAXIMA << "): ";
+                cin >> hora;
+                // Si escribio una letra, se limpia el error y se descarta la linea
+                if (cin.fail()) { cin.clear(); cin.ignore(1000, '\n'); hora = HORA_MINIMA - 1; }
+                // || = "o": invalida si es menor que 0 o mayor que 23
+                if (hora < HORA_MINIMA || hora > HORA_MAXIMA) cout << "  Hora invalida." << endl;
+            } while (hora < HORA_MINIMA || hora > HORA_MAXIMA);
+            // El precio: debe ser mayor que 0
+            do {
+                cout << "Precio de bolsa (COP/kWh): ";
+                cin >> precio;
+                if (cin.fail()) { cin.clear(); cin.ignore(1000, '\n'); precio = 0; }
+                if (precio <= 0) cout << "  El precio debe ser mayor que 0." << endl;
+            } while (precio <= 0);
+            // Los embalses: deben estar entre 0 y 100 %
+            do {
+                cout << "Nivel de los embalses (0 a 100 %): ";
+                cin >> embalses;
+                if (cin.fail()) { cin.clear(); cin.ignore(1000, '\n'); embalses = PORCENTAJE_MINIMO - 1; }
+                if (embalses < PORCENTAJE_MINIMO || embalses > PORCENTAJE_MAXIMO) cout << "  Nivel invalido." << endl;
+            } while (embalses < PORCENTAJE_MINIMO || embalses > PORCENTAJE_MAXIMO);
+            cout << "Lectura guardada." << endl;
+            // break: termina este caso y sale del switch
+            break;
+        // Opcion 2: que haria cada carga con la lectura guardada
+        case 2:
+            cout << fixed << setprecision(1);
+            cout << "Hora " << hora << " | precio " << precio << " | embalses " << embalses << " %" << endl;
+            negocio.evaluar(hora, precio, embalses);
+            break;
+        // Opcion 3: simular las 24 horas y recordar que ya hay simulacion
+        case 3:
+            negocio.simularDia();
+            haySimulacion = true;
+            break;
+        // Opcion 4: el resumen, solo si ya se simulo un dia
+        case 4:
+            if (haySimulacion) negocio.resumen();
+            else cout << "Primero simule un dia con la opcion 3." << endl;
+            break;
+        // Opcion 0: salir
+        case 0:
+            cout << "Hasta luego." << endl;
+            break;
+        // default: cualquier otro valor
+        default:
+            cout << "Opcion invalida." << endl;
+        }
+        // Pausa: espera a que el usuario lea el resultado antes de volver a mostrar el menu
+        if (opcion != 0) {
+            cout << endl << "Presione Enter para continuar...";
+            // cin.ignore(): descarta lo que quedo escrito en la linea
+            cin.ignore(1000, '\n');
+            // cin.get(): espera a que el usuario presione Enter
+            cin.get();
+        }
+    // Vuelve a mostrar el menu mientras la opcion sea distinta de 0
+    } while (opcion != 0);
+
     return 0;
 }
